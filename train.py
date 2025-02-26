@@ -3,17 +3,16 @@ import requests
 from bs4 import BeautifulSoup
 import smtplib
 from email.mime.text import MIMEText
+import datetime
+import time
 
 app = Flask(__name__)
 
-# 設置 Gmail SMTP 參數（不再使用環境變數）
+# 設置 Gmail SMTP 參數
 SMTP_SERVER = 'smtp.gmail.com'
 SMTP_PORT = 587
 
 def get_token(session, url, token_name):
-    """
-    從指定 URL 的 HTML 中取得指定名稱的 token 值
-    """
     response = session.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
     token = soup.find('input', {'name': token_name})
@@ -34,7 +33,7 @@ def query_train_request(startStation, endStation, rideDate, startTime, endTime, 
     data = [
         ("_csrf", csrf_token),
         ("custIdTypeEnum", "PERSON_ID"),
-        ("pid", pid),  # 使用前端傳來的 pid
+        ("pid", pid),
         ("tripType", "ONEWAY"),
         ("orderType", "BY_TIME"),
         ("ticketOrderParamList[0].tripNo", "TRIP1"),
@@ -86,15 +85,20 @@ def query_train_request(startStation, endStation, rideDate, startTime, endTime, 
             if train_ul:
                 a_tag = train_ul.find("a")
                 train_info = a_tag.get_text(strip=True) if a_tag else "未知車次"
+                # 從 href 中提取 rideDate
+                ride_date = a_tag.get('href', '').split('rideDate=')[1].split('&')[0] if a_tag and 'rideDate=' in a_tag.get('href', '') else rideDate
+                ride_date_short = ride_date[5:]  # 提取 "MM/DD" 部分，例如 "02/28"
             else:
                 train_info = "未知車次"
+                ride_date_short = rideDate[5:]  # 預設使用傳入的 rideDate
+            
             tds = row.find_all("td")
             if len(tds) >= 4:
                 departure_time = tds[2].get_text(strip=True)
                 arrival_time = tds[3].get_text(strip=True)
-                time_info = f"{departure_time}-{arrival_time}"
+                time_info = f"{ride_date_short} {departure_time}-{arrival_time}"
             else:
-                time_info = "未知時間"
+                time_info = f"{ride_date_short} 未知時間"
             results.append({"train": train_info, "time": time_info})
         return {"found": True, "results": results}
     else:
@@ -105,9 +109,6 @@ def query_train_request(startStation, endStation, rideDate, startTime, endTime, 
             return {"found": False, "message": "未找到明確的查詢結果。"}
 
 def send_email(recipient, subject, body, smtp_username, smtp_app_password):
-    """
-    使用前端傳來的 Gmail 帳號和應用程式密碼寄送 Email
-    """
     try:
         msg = MIMEText(body, 'plain', 'utf-8')
         msg['Subject'] = subject
@@ -132,6 +133,8 @@ def index():
 <head>
     <meta charset="UTF-8">
     <title>台鐵查詢系統</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <style>
         .spinner {
             border: 4px solid #f3f3f3;
@@ -146,6 +149,10 @@ def index():
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .flatpickr-input {
+            width: 200px;
+            padding: 5px;
+        }
     </style>
 </head>
 <body>
@@ -156,12 +163,10 @@ def index():
         <input type="text" id="startStation" value="1000-台北"><br>
         <label>抵達站：</label>
         <input type="text" id="endStation" value="3300-台中"><br>
-        <label>日期：</label>
-        <input type="date" id="rideDate" value="2025-02-28"><br>
-        <label>出發時間(起始時間)：</label>
-        <input type="time" id="startTime" value="12:00"><br>
-        <label>出發時間(結束時間)：</label>
-        <input type="time" id="endTime" value="13:00"><br>
+        <label>出發時間(起)：</label>
+        <input type="text" id="startDateTime" value="2025-02-23 02:00"><br>
+        <label>出發時間(迄)：</label>
+        <input type="text" id="endDateTime" value="2025-02-24 14:00"><br>
         <label>查詢頻率 (分鐘)：</label>
         <input type="number" id="frequency" value="5" min="1"><br>
         <label>身分證號碼：</label>
@@ -171,7 +176,7 @@ def index():
         <label>Gmail 應用程式密碼(寄件人)：</label>
         <input type="password" id="smtpAppPassword" placeholder="請輸入應用程式密碼" required><br>
         <label>通知 Email：</label>
-        <input type="email(收件人)" id="email" placeholder="請輸入接收通知的 email"><br>
+        <input type="email" id="email" placeholder="請輸入接收通知的 email"><br>
         <label>查詢到結果後停止：</label>
         <input type="checkbox" id="stopWhenFound" checked><br>
         <button type="button" onclick="startQuery()">開始查詢</button>
@@ -189,6 +194,21 @@ def index():
     <div id="resultArea"></div>
     
     <script>
+        flatpickr("#startDateTime", {
+            enableTime: true,
+            dateFormat: "Y-m-d H:i",
+            time_24hr: true,
+            minuteIncrement: 5,
+            defaultDate: "2025-02-23 02:00"
+        });
+        flatpickr("#endDateTime", {
+            enableTime: true,
+            dateFormat: "Y-m-d H:i",
+            time_24hr: true,
+            minuteIncrement: 5,
+            defaultDate: "2025-02-24 14:00"
+        });
+
         let queryInterval = null;
         let countdownInterval = null;
         let queryCount = 0;
@@ -264,9 +284,8 @@ def index():
             
             const startStation = document.getElementById('startStation').value;
             const endStation = document.getElementById('endStation').value;
-            const rideDate = document.getElementById('rideDate').value;
-            const startTime = document.getElementById('startTime').value;
-            const endTime = document.getElementById('endTime').value;
+            const startDateTime = document.getElementById('startDateTime').value;
+            const endDateTime = document.getElementById('endDateTime').value;
             const pid = document.getElementById('pid').value;
             const smtpUsername = document.getElementById('smtpUsername').value;
             const smtpAppPassword = document.getElementById('smtpAppPassword').value;
@@ -279,9 +298,8 @@ def index():
                 body: JSON.stringify({
                     startStation: startStation,
                     endStation: endStation,
-                    rideDate: rideDate,
-                    startTime: startTime,
-                    endTime: endTime,
+                    startDateTime: startDateTime,
+                    endDateTime: endDateTime,
                     pid: pid,
                     smtpUsername: smtpUsername,
                     smtpAppPassword: smtpAppPassword,
@@ -309,35 +327,82 @@ def query():
     req_data = request.get_json()
     startStation = req_data.get('startStation', '1000-台北')
     endStation = req_data.get('endStation', '3300-台中')
-    rideDate = req_data.get('rideDate', '2025/02/28')
-    if '-' in rideDate:
-        rideDate = rideDate.replace('-', '/')
-    startTime = req_data.get('startTime', '12:00')
-    endTime = req_data.get('endTime', '13:00')
-    pid = req_data.get('pid')  # 從前端獲取
-    smtp_username = req_data.get('smtpUsername')  # 從前端獲取
-    smtp_app_password = req_data.get('smtpAppPassword')  # 從前端獲取
+    startDateTime = req_data.get('startDateTime', '2025-02-23 02:00')
+    endDateTime = req_data.get('endDateTime', '2025-02-24 14:00')
+    pid = req_data.get('pid')
+    smtp_username = req_data.get('smtpUsername')
+    smtp_app_password = req_data.get('smtpAppPassword')
     email = req_data.get('email', None)
     
     # 檢查必要欄位
     if not pid or not smtp_username or not smtp_app_password:
         return jsonify({"error": "請提供身分證號碼、Gmail 地址和應用程式密碼"})
     
-    result = query_train_request(startStation, endStation, rideDate, startTime, endTime, pid)
+    # 將 Flatpickr 格式轉換為 datetime 對象
+    start_dt = datetime.datetime.strptime(startDateTime, '%Y-%m-%d %H:%M')
+    end_dt = datetime.datetime.strptime(endDateTime, '%Y-%m-%d %H:%M')
+    
+    # 如果結束時間早於起始時間，假設跨日
+    if end_dt < start_dt:
+        end_dt += datetime.timedelta(days=1)
+    
+    results = []
+    current_start = start_dt
+    
+    while current_start < end_dt:
+        # 計算當天的結束時間（不能跨日）
+        day_end = datetime.datetime.strptime(f"{current_start.strftime('%Y/%m/%d')} 23:59", '%Y/%m/%d %H:%M')
+        if day_end > end_dt:
+            day_end = end_dt
+        
+        # 從當前開始時間到當天結束，按 8 小時拆分
+        segment_start = current_start
+        while segment_start < day_end:
+            segment_end = segment_start + datetime.timedelta(hours=8)
+            if segment_end > day_end:
+                segment_end = day_end
+            
+            # 格式化時間和日期
+            segment_start_str = segment_start.strftime('%H:%M')
+            segment_end_str = segment_end.strftime('%H:%M')
+            current_date_str = segment_start.strftime('%Y/%m/%d')
+            
+            # 調用 API
+            result = query_train_request(startStation, endStation, current_date_str, segment_start_str, segment_end_str, pid)
+            if result.get("found"):
+                results.extend(result.get("results", []))
+            
+            # 更新下一個段的開始時間
+            segment_start = segment_end
+            
+            # 如果還有更多時間段，等待 2 秒
+            if segment_start < day_end:
+                time.sleep(2)
+        
+        # 移動到下一天的開始（00:00）
+        current_start = day_end + datetime.timedelta(minutes=1)
+        if current_start < end_dt:
+            time.sleep(2)
+
+    # 合併結果
+    if results:
+        final_result = {"found": True, "results": results}
+    else:
+        final_result = {"found": False, "message": "所有時段均未找到符合條件的車次。"}
     
     # 如果有查到結果且有提供 email，寄送通知
-    if result.get("found") and result.get("results") and email:
+    if final_result.get("found") and final_result.get("results") and email:
         body = ""
-        for item in result["results"]:
+        for item in final_result["results"]:
             body += f"{item['train']}\n{item['time']}\n\n"
         subject = "查詢結果通知"
         if send_email(email, subject, body, smtp_username, smtp_app_password):
-            result["emailSent"] = True
+            final_result["emailSent"] = True
         else:
-            result["emailSent"] = False
-            result["emailError"] = "寄送 Email 失敗"
+            final_result["emailSent"] = False
+            final_result["emailError"] = "寄送 Email 失敗"
     
-    return jsonify(result)
+    return jsonify(final_result)
 
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False)
