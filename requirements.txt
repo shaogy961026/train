@@ -56,6 +56,7 @@ uritemplate==4.1.1
 urllib3==1.26.19
 urllib3-secure-extra==0.1.0
 weasyprint==62.3
+gunicorn
 webdriver-manager==4.0.2
 wheel==0.43.0
 wsproto==1.2.0
