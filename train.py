@@ -3,17 +3,13 @@ import requests
 from bs4 import BeautifulSoup
 import smtplib
 from email.mime.text import MIMEText
-import os
 
 app = Flask(__name__)
 
-# 設置 Gmail SMTP 參數
+# 設置 Gmail SMTP 參數（不再使用環境變數）
 SMTP_SERVER = 'smtp.gmail.com'
 SMTP_PORT = 587
-SMTP_USERNAME = os.getenv('SMTP_USERNAME')  # 請替換成你的 Gmail 地址
-SMTP_APP_PASSWORD = os.getenv('SMTP_APP_PASSWORD')  # 請替換成你的應用程式密碼
-pid= os.getenv('pid') # 請替換成你的身分證號碼
-    
+
 def get_token(session, url, token_name):
     """
     從指定 URL 的 HTML 中取得指定名稱的 token 值
@@ -23,7 +19,7 @@ def get_token(session, url, token_name):
     token = soup.find('input', {'name': token_name})
     return token['value'] if token else None
 
-def query_train_request(startStation, endStation, rideDate, startTime, endTime):
+def query_train_request(startStation, endStation, rideDate, startTime, endTime, pid):
     session = requests.Session()
     query_url = 'https://www.railway.gov.tw/tra-tip-web/tip/tip001/tip123/query'
     post_url = 'https://www.railway.gov.tw/tra-tip-web/tip/tip001/tip123/queryTrain'
@@ -38,7 +34,7 @@ def query_train_request(startStation, endStation, rideDate, startTime, endTime):
     data = [
         ("_csrf", csrf_token),
         ("custIdTypeEnum", "PERSON_ID"),
-        ("pid", pid),
+        ("pid", pid),  # 使用前端傳來的 pid
         ("tripType", "ONEWAY"),
         ("orderType", "BY_TIME"),
         ("ticketOrderParamList[0].tripNo", "TRIP1"),
@@ -77,7 +73,7 @@ def query_train_request(startStation, endStation, rideDate, startTime, endTime):
     
     try:
         response = session.post(post_url, data=data, headers=headers)
-        response.raise_for_status()  # 檢查 HTTP 狀態碼
+        response.raise_for_status()
     except requests.RequestException as e:
         return {"error": f"請求失敗: {str(e)}"}
     
@@ -108,19 +104,19 @@ def query_train_request(startStation, endStation, rideDate, startTime, endTime):
         else:
             return {"found": False, "message": "未找到明確的查詢結果。"}
 
-def send_email(recipient, subject, body):
+def send_email(recipient, subject, body, smtp_username, smtp_app_password):
     """
-    使用 Gmail 應用程式密碼寄送 Email
+    使用前端傳來的 Gmail 帳號和應用程式密碼寄送 Email
     """
     try:
         msg = MIMEText(body, 'plain', 'utf-8')
         msg['Subject'] = subject
-        msg['From'] = SMTP_USERNAME
+        msg['From'] = smtp_username
         msg['To'] = recipient
 
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
         server.starttls()
-        server.login(SMTP_USERNAME, SMTP_APP_PASSWORD)
+        server.login(smtp_username, smtp_app_password)
         server.send_message(msg)
         server.quit()
         return True
@@ -137,7 +133,6 @@ def index():
     <meta charset="UTF-8">
     <title>台鐵查詢系統</title>
     <style>
-        /* 簡單的 loading spinner */
         .spinner {
             border: 4px solid #f3f3f3;
             border-top: 4px solid #3498db;
@@ -168,8 +163,14 @@ def index():
         <input type="time" id="endTime" value="13:00"><br>
         <label>查詢頻率 (分鐘)：</label>
         <input type="number" id="frequency" value="5" min="1"><br>
+        <label>身分證號碼 (PID)：</label>
+        <input type="text" id="pid" placeholder="請輸入身分證號碼" required><br>
+        <label>Gmail 地址：</label>
+        <input type="email" id="smtpUsername" placeholder="請輸入 Gmail 地址(寄件人)" required><br>
+        <label>Gmail 應用程式密碼：</label>
+        <input type="password" id="smtpAppPassword" placeholder="請輸入應用程式密碼(寄件人)" required><br>
         <label>通知 Email：</label>
-        <input type="email" id="email" placeholder="請輸入接收通知的 email"><br>
+        <input type="email" id="email" placeholder="請輸入接收通知的 email(收件人)"><br>
         <label>查詢到結果後停止：</label>
         <input type="checkbox" id="stopWhenFound" checked><br>
         <button type="button" onclick="startQuery()">開始查詢</button>
@@ -265,6 +266,9 @@ def index():
             const rideDate = document.getElementById('rideDate').value;
             const startTime = document.getElementById('startTime').value;
             const endTime = document.getElementById('endTime').value;
+            const pid = document.getElementById('pid').value;
+            const smtpUsername = document.getElementById('smtpUsername').value;
+            const smtpAppPassword = document.getElementById('smtpAppPassword').value;
             const email = document.getElementById('email').value;
             const stopWhenFound = document.getElementById('stopWhenFound').checked;
             
@@ -277,6 +281,9 @@ def index():
                     rideDate: rideDate,
                     startTime: startTime,
                     endTime: endTime,
+                    pid: pid,
+                    smtpUsername: smtpUsername,
+                    smtpAppPassword: smtpAppPassword,
                     email: email
                 })
             })
@@ -306,9 +313,16 @@ def query():
         rideDate = rideDate.replace('-', '/')
     startTime = req_data.get('startTime', '12:00')
     endTime = req_data.get('endTime', '13:00')
+    pid = req_data.get('pid')  # 從前端獲取
+    smtp_username = req_data.get('smtpUsername')  # 從前端獲取
+    smtp_app_password = req_data.get('smtpAppPassword')  # 從前端獲取
     email = req_data.get('email', None)
     
-    result = query_train_request(startStation, endStation, rideDate, startTime, endTime)
+    # 檢查必要欄位
+    if not pid or not smtp_username or not smtp_app_password:
+        return jsonify({"error": "請提供身分證號碼、Gmail 地址和應用程式密碼"})
+    
+    result = query_train_request(startStation, endStation, rideDate, startTime, endTime, pid)
     
     # 如果有查到結果且有提供 email，寄送通知
     if result.get("found") and result.get("results") and email:
@@ -316,7 +330,7 @@ def query():
         for item in result["results"]:
             body += f"{item['train']}\n{item['time']}\n\n"
         subject = "查詢結果通知"
-        if send_email(email, subject, body):
+        if send_email(email, subject, body, smtp_username, smtp_app_password):
             result["emailSent"] = True
         else:
             result["emailSent"] = False
