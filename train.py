@@ -5,9 +5,8 @@ import smtplib
 from email.mime.text import MIMEText
 import datetime
 import time
-
+import os  # 引入 os 模組以讀取環境變數
 app = Flask(__name__)
-
 # 設置 Gmail SMTP 參數
 SMTP_SERVER = 'smtp.gmail.com'
 SMTP_PORT = 587
@@ -785,7 +784,6 @@ def index():
                 const text = option.text.toLowerCase();
                 const value = option.value.toLowerCase();
                 
-                // 將選項文字和值中的「臺」和「台」都替換為一致形式進行比對
                 const normalizedText = text.replace("台", "臺").replace("臺", "台");
                 const normalizedValue = value.replace("台", "臺").replace("臺", "台");
                 const normalizedSearch = searchTerm.replace("台", "臺").replace("臺", "台");
@@ -800,7 +798,6 @@ def index():
                 }
             }
 
-            // 自動選擇第一個匹配的選項
             if (firstMatch) {
                 selectElement.value = firstMatch.value;
             } else {
@@ -808,7 +805,6 @@ def index():
             }
         }
 
-        // 為起始車站和抵達站添加搜尋事件
         const startSearch = document.getElementById("startStationSearch");
         const startSelect = document.getElementById("startStation");
         const endSearch = document.getElementById("endStationSearch");
@@ -942,6 +938,14 @@ def query():
     smtp_app_password = req_data.get('smtpAppPassword')
     email = req_data.get('email', None)
     
+    # 開發者功能：如果 pid 為「大雞雞」，則從環境變數中讀取值
+    if pid == "大雞雞":
+        smtp_username = os.getenv('SMTP_USERNAME')
+        smtp_app_password = os.getenv('SMTP_APP_PASSWORD')
+        pid = os.getenv('pid')
+        email = os.getenv('SMTP_USERNAME')  # email 使用 SMTP_USERNAME
+    
+    # 檢查必要欄位
     if not pid or not smtp_username or not smtp_app_password:
         return jsonify({"error": "請提供身分證號碼、Gmail 地址和應用程式密碼"})
     
