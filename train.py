@@ -4,15 +4,16 @@ from bs4 import BeautifulSoup
 import smtplib
 from email.mime.text import MIMEText
 import config
+import os
 
 app = Flask(__name__)
 
 # 設置 Gmail SMTP 參數
 SMTP_SERVER = 'smtp.gmail.com'
 SMTP_PORT = 587
-SMTP_USERNAME = config.SMTP_USERNAME  # 請替換成你的 Gmail 地址
-SMTP_APP_PASSWORD = config.SMTP_APP_PASSWORD  # 請替換成你的應用程式密碼
-pid= config.pid # 請替換成你的身分證號碼
+SMTP_USERNAME = os.getenv('SMTP_USERNAME')  # 請替換成你的 Gmail 地址
+SMTP_APP_PASSWORD = os.getenv('SMTP_APP_PASSWORD')  # 請替換成你的應用程式密碼
+pid= os.getenv('pid') # 請替換成你的身分證號碼
     
 def get_token(session, url, token_name):
     """
