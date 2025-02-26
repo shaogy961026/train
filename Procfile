@@ -1,1 +1,1 @@
-web gunicorn train.py:app
+web gunicorn train:app
