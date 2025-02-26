@@ -100,7 +100,7 @@ def query_train_request(startStation, endStation, rideDate, startTime, endTime, 
     else:
         warning = soup.find("h2", class_="icon-fa warning")
         if warning:
-            return {"found": False, "message": "您所查詢的條件，均沒有空位。請使用下方功能查詢鄰近時段班次，或返回上一步調整查詢條件"}
+            return {"found": False, "message": "您所查詢的條件，均沒有空位。"}
         else:
             return {"found": False, "message": "未找到明確的查詢結果。"}
 
@@ -150,6 +150,7 @@ def index():
 </head>
 <body>
     <h1>台鐵查詢系統</h1>
+    <h1>輸入請參考 https://www.railway.gov.tw/tra-tip-web/tip/tip001/tip123/query</h1>
     <form id="queryForm">
         <label>起始車站：</label>
         <input type="text" id="startStation" value="1000-台北"><br>
@@ -163,14 +164,14 @@ def index():
         <input type="time" id="endTime" value="13:00"><br>
         <label>查詢頻率 (分鐘)：</label>
         <input type="number" id="frequency" value="5" min="1"><br>
-        <label>身分證號碼 (PID)：</label>
+        <label>身分證號碼：</label>
         <input type="text" id="pid" placeholder="請輸入身分證號碼" required><br>
-        <label>Gmail 地址：</label>
-        <input type="email" id="smtpUsername" placeholder="請輸入 Gmail 地址(寄件人)" required><br>
-        <label>Gmail 應用程式密碼：</label>
-        <input type="password" id="smtpAppPassword" placeholder="請輸入應用程式密碼(寄件人)" required><br>
+        <label>Gmail 地址(寄件人)：</label>
+        <input type="email" id="smtpUsername" placeholder="請輸入 Gmail 地址" required><br>
+        <label>Gmail 應用程式密碼(寄件人)：</label>
+        <input type="password" id="smtpAppPassword" placeholder="請輸入應用程式密碼" required><br>
         <label>通知 Email：</label>
-        <input type="email" id="email" placeholder="請輸入接收通知的 email(收件人)"><br>
+        <input type="email(收件人)" id="email" placeholder="請輸入接收通知的 email"><br>
         <label>查詢到結果後停止：</label>
         <input type="checkbox" id="stopWhenFound" checked><br>
         <button type="button" onclick="startQuery()">開始查詢</button>
