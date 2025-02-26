@@ -1,1 +1,1 @@
-web gunicorn train.py
+web gunicorn train.py:train.py
