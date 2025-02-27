@@ -1,0 +1,5 @@
+flask==2.3.3          # Web 框架
+werkzeug==2.3.8       # Flask 的依賴
+gunicorn==23.0.0      # Heroku 的 WSGI 服務器
+beautifulsoup4==4.12.3 # 如果需要解析 HTML
+requests==2.31.0      # 新增，處理 HTTP 請求
