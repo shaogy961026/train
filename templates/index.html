@@ -6,6 +6,89 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <style>
+        /* 美化樣式 */
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        form {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        label {
+            font-weight: bold;
+            margin-top: 10px;
+            display: block;
+        }
+        input[type="text"], input[type="number"], input[type="email"], input[type="password"] {
+            width: 100%;
+            max-width: 300px;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .email-section {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+        .button-group {
+            margin-top: 20px;
+            display: flex; /* 水平排列 */
+            gap: 20px; /* 加大間距 */
+            flex-wrap: wrap; /* 若空間不足，自動換行 */
+        }
+        button {
+            padding: 12px 25px; /* 增大內距 */
+            border: none;
+            border-radius: 6px; /* 更大圓角 */
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s, box-shadow 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 增加陰影 */
+        }
+        button:hover:not(:disabled) {
+            background-color: #0056b3;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2); /* 懸停時陰影加深 */
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+            box-shadow: none; /* 禁用時移除陰影 */
+        }
+        .button-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        small {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        .status-section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        #resultArea {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
         .spinner {
             border: 4px solid #f3f3f3;
             border-top: 4px solid #3498db;
@@ -19,24 +102,11 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        .flatpickr-input {
-            width: 200px;
-            padding: 5px;
-        }
-        select {
-            width: 220px;
-            padding: 5px;
-        }
-        .station-search {
-            width: 200px;
-            padding: 5px;
-            margin-bottom: 5px;
-        }
     </style>
 </head>
 <body>
     <h1>台鐵查詢系統</h1>
-    <h1>輸入請參考 https://www.railway.gov.tw/tra-tip-web/tip/tip001/tip123/query</h1>
+    <h1>請參考 <a href="https://www.railway.gov.tw/tra-tip-web/tip/tip001/tip123/query">https://www.railway.gov.tw/tra-tip-web/tip/tip001/tip123/query</a></h1>
     <form id="queryForm">
         <label>起始車站：</label><br>
         <input type="text" id="startStationSearch" class="station-search" placeholder="輸入站名或代碼搜尋"><br>
@@ -603,216 +673,239 @@
         <label>出發時間(迄)：</label>
         <input type="text" id="endDateTime" name="endDateTime"><br>
         <label>查詢頻率 (分鐘)：</label>
-        <input type="number" id="frequency" value="5" min="1"><br>
+        <input type="number" id="frequency" value="5" min="1">
+        <small>設定每次查詢的間隔時間</small><br>
         <label>身分證號碼：</label>
         <input type="text" id="pid" placeholder="請輸入身分證號碼" required><br>
-        <label>Gmail 地址(寄件人)：</label>
-        <input type="email" id="smtpUsername" placeholder="請輸入 Gmail 地址" required><br>
-        <label>Gmail 應用程式密碼(寄件人)：</label>
-        <input type="password" id="smtpAppPassword" placeholder="請輸入應用程式密碼" required><br>
-        <label>通知 Email：</label>
-        <input type="email" id="email" placeholder="請輸入接收通知的 email"><br>
-        <label>查詢到結果後停止：</label>
-        <input type="checkbox" id="stopWhenFound" checked><br>
-        <button type="button" onclick="startQuery()">開始查詢</button>
-        <button type="button" id="stopButton" onclick="stopQuery()" disabled>停止查詢</button>
-    </form>
-    
-    <div style="margin-top:20px;">
-        <div>查詢狀態: <span id="status">未開始</span></div>
-        <div>查詢次數: <span id="queryCount">0</span></div>
-        <div id="loadingIndicator" style="display:none;">查詢中... <span class="spinner"></span></div>
-        <div id="countdown" style="display:none;">距離下一次查詢: <span id="countdownSeconds">0</span> 秒</div>
-    </div>
-    
-    <h2>查詢結果</h2>
-    <div id="resultArea"></div>
-    
-    <script>
-        // 獲取當前時間並格式化
-        const now = new Date();
-        const formatDate = (date) => {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            const hours = String(date.getHours()).padStart(2, '0');
-            const minutes = String(date.getMinutes()).padStart(2, '0');
-            return `${year}-${month}-${day} ${hours}:${minutes}`;
-        };
-
-        // 設置 startDateTime 為當前時間
-        const startDateTime = formatDate(now);
-        document.getElementById('startDateTime').value = startDateTime;
-
-        // 設置 endDateTime 為當前時間後 24 小時
-        const endDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-        const endDateTime = formatDate(endDate);
-        document.getElementById('endDateTime').value = endDateTime;
-
-        // 初始化 Flatpickr
-        flatpickr("#startDateTime", {
-            enableTime: true,
-            dateFormat: "Y-m-d H:i",
-            time_24hr: true,
-            minuteIncrement: 5,
-            defaultDate: startDateTime
-        });
-        flatpickr("#endDateTime", {
-            enableTime: true,
-            dateFormat: "Y-m-d H:i",
-            time_24hr: true,
-            minuteIncrement: 5,
-            defaultDate: endDateTime
-        });
-
-        // 搜尋功能（支援通同字）
-        function filterStations(searchInput, selectElement) {
-            const searchTerm = searchInput.value.toLowerCase().replace("台", "臺").replace("臺", "台");
-            const options = selectElement.getElementsByTagName("option");
-            let firstMatch = null;
-
-            for (let i = 0; i < options.length; i++) {
-                const option = options[i];
-                const text = option.text.toLowerCase();
-                const value = option.value.toLowerCase();
-                
-                const normalizedText = text.replace("台", "臺").replace("臺", "台");
-                const normalizedValue = value.replace("台", "臺").replace("臺", "台");
-                const normalizedSearch = searchTerm.replace("台", "臺").replace("臺", "台");
-
-                if (normalizedText.includes(normalizedSearch) || normalizedValue.includes(normalizedSearch)) {
-                    option.style.display = "";
-                    if (!firstMatch && option.value) {
-                        firstMatch = option;
+        
+        <div class="email-section">
+            <label>
+                <input type="checkbox" id="enableEmail" name="enableEmail">
+                開啟 email 寄送服務
+            </label>
+            <small>若找到車次，將結果寄送到您指定的 email</small>
+            <div id="emailFields" style="display: none;">
+                <label for="smtpUsername">您的 Gmail 地址</label>
+                <input type="email" id="smtpUsername" name="smtpUsername" placeholder="example@gmail.com">
+                <label for="smtpAppPassword">Gmail 應用程式密碼</label>
+                <input type="password" id="smtpAppPassword" name="smtpAppPassword" placeholder="應用程式密碼">
+                <small>請至 Google 帳戶設定取得</small><br>
+                <label for="email">接收通知的 Email</label>
+                <input type="email" id="email" name="email" placeholder="結果將寄送到此 email">
+            </div>
+        </div>
+        
+        <div class="button-group">
+            <div class="button-container">
+                <button type="button" id="queryUntilFoundBtn" onclick="startQueryUntilFound()">查到為止</button>
+                <small>找到車次後自動停止</small>
+            </div>
+            <div class="button-container">
+                <button type="button" id="queryForeverBtn" onclick="startQueryForever()">一直查</button>
+                <small>持續查詢直到手動停止</small>
+            </div>
+            <div class="button-container">
+                <button type="button" id="stopButton" onclick="stopQuery()" disabled>停止查詢</button>
+                <small>隨時停止查詢動作</small>
+            </div>
+        </div>
+        
+        <small style="display: block; margin-top: 10px;">查詢結果包含所有可訂票的車種，已售完的車票不會顯示。</small>
+        </form>
+        
+        <div class="status-section">
+            <div>查詢狀態: <span id="status">未開始</span></div>
+            <div>查詢次數: <span id="queryCount">0</span> <small>顯示已查詢的次數</small></div>
+            <div id="queryStatus" style="display:none;">查詢中，請稍候... <span class="spinner"></span></div>
+            <div id="nextQueryCountdown" style="display:none;">下次查詢倒數計時：<span id="countdownSeconds"></span> 秒</div>
+        </div>
+        
+        <h2>查詢結果</h2>
+        <div id="resultArea"></div>
+        
+        <script>
+            const now = new Date();
+            const formatDate = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                return `${year}-${month}-${day} ${hours}:${minutes}`;
+            };
+        
+            document.getElementById('startDateTime').value = formatDate(now);
+            document.getElementById('endDateTime').value = formatDate(new Date(now.getTime() + 24 * 60 * 60 * 1000));
+        
+            flatpickr("#startDateTime", { enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true, minuteIncrement: 5, defaultDate: document.getElementById('startDateTime').value });
+            flatpickr("#endDateTime", { enableTime: true, dateFormat: "Y-m-d H:i", time_24hr: true, minuteIncrement: 5, defaultDate: document.getElementById('endDateTime').value });
+        
+            function filterStations(searchInput, selectElement) {
+                const searchTerm = searchInput.value.toLowerCase().replace("台", "臺").replace("臺", "台");
+                const options = selectElement.getElementsByTagName("option");
+                let firstMatch = null;
+        
+                for (let i = 0; i < options.length; i++) {
+                    const option = options[i];
+                    const text = option.text.toLowerCase();
+                    const value = option.value.toLowerCase();
+                    const normalizedText = text.replace("台", "臺").replace("臺", "台");
+                    const normalizedValue = value.replace("台", "臺").replace("臺", "台");
+                    const normalizedSearch = searchTerm.replace("台", "臺").replace("臺", "台");
+        
+                    if (normalizedText.includes(normalizedSearch) || normalizedValue.includes(normalizedSearch)) {
+                        option.style.display = "";
+                        if (!firstMatch && option.value) firstMatch = option;
+                    } else {
+                        option.style.display = "none";
                     }
-                } else {
-                    option.style.display = "none";
                 }
+        
+                if (firstMatch) selectElement.value = firstMatch.value;
+                else selectElement.value = "";
             }
-
-            if (firstMatch) {
-                selectElement.value = firstMatch.value;
-            } else {
-                selectElement.value = "";
-            }
-        }
-
-        const startSearch = document.getElementById("startStationSearch");
-        const startSelect = document.getElementById("startStation");
-        const endSearch = document.getElementById("endStationSearch");
-        const endSelect = document.getElementById("endStation");
-
-        startSearch.addEventListener("input", () => filterStations(startSearch, startSelect));
-        endSearch.addEventListener("input", () => filterStations(endSearch, endSelect));
-
-        let queryInterval = null;
-        let countdownInterval = null;
-        let queryCount = 0;
-        let countdownSeconds = 0;
         
-        function updateStatus(text) {
-            document.getElementById('status').innerText = text;
-        }
+            const startSearch = document.getElementById("startStationSearch");
+            const startSelect = document.getElementById("startStation");
+            const endSearch = document.getElementById("endStationSearch");
+            const endSelect = document.getElementById("endStation");
         
-        function displayResult(data) {
-            const resultArea = document.getElementById('resultArea');
-            resultArea.innerHTML = '';
-            if (data.found) {
-                data.results.forEach(item => {
-                    const div = document.createElement('div');
-                    div.innerHTML = `<strong>${item.train}</strong><br>${item.time}<hr>`;
-                    resultArea.appendChild(div);
-                });
-            } else {
-                resultArea.innerHTML = '<p>' + data.message + '</p>';
-            }
-        }
+            startSearch.addEventListener("input", () => filterStations(startSearch, startSelect));
+            endSearch.addEventListener("input", () => filterStations(endSearch, endSelect));
         
-        function startQuery() {
-            document.getElementById('stopButton').disabled = false;
-            queryCount = 0;
-            document.getElementById('queryCount').innerText = queryCount;
-            updateStatus("持續查詢中...");
-            document.getElementById('loadingIndicator').style.display = 'inline-block';
-            
-            let frequency = parseInt(document.getElementById('frequency').value);
-            if (isNaN(frequency) || frequency < 1) frequency = 1;
-            countdownSeconds = frequency * 60;
-            startCountdown();
-            
-            queryTrain();
-            let intervalMs = frequency * 60 * 1000;
-            queryInterval = setInterval(queryTrain, intervalMs);
-        }
-        
-        function stopQuery() {
-            clearInterval(queryInterval);
-            clearInterval(countdownInterval);
-            queryInterval = null;
-            countdownInterval = null;
-            updateStatus("已停止查詢");
-            document.getElementById('stopButton').disabled = true;
-            document.getElementById('loadingIndicator').style.display = 'none';
-            document.getElementById('countdown').style.display = 'none';
-        }
-        
-        function startCountdown() {
-            document.getElementById('countdown').style.display = 'inline-block';
-            countdownInterval = setInterval(() => {
-                if (countdownSeconds > 0) {
-                    countdownSeconds--;
-                    document.getElementById('countdownSeconds').innerText = countdownSeconds;
-                } else {
-                    clearInterval(countdownInterval);
-                }
-            }, 1000);
-        }
-        
-        function queryTrain() {
-            queryCount++;
-            document.getElementById('queryCount').innerText = queryCount;
-            let frequency = parseInt(document.getElementById('frequency').value);
-            if (isNaN(frequency) || frequency < 1) frequency = 1;
-            countdownSeconds = frequency * 60;
-            document.getElementById('countdownSeconds').innerText = countdownSeconds;
-            clearInterval(countdownInterval);
-            startCountdown();
-            
-            const startStation = document.getElementById('startStation').value;
-            const endStation = document.getElementById('endStation').value;
-            const startDateTime = document.getElementById('startDateTime').value;
-            const endDateTime = document.getElementById('endDateTime').value;
-            const pid = document.getElementById('pid').value;
-            const smtpUsername = document.getElementById('smtpUsername').value;
-            const smtpAppPassword = document.getElementById('smtpAppPassword').value;
-            const email = document.getElementById('email').value;
-            const stopWhenFound = document.getElementById('stopWhenFound').checked;
-            
-            fetch('/query', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    startStation: startStation,
-                    endStation: endStation,
-                    startDateTime: startDateTime,
-                    endDateTime: endDateTime,
-                    pid: pid,
-                    smtpUsername: smtpUsername,
-                    smtpAppPassword: smtpAppPassword,
-                    email: email
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                displayResult(data);
-                if (data.found && data.results && data.results.length > 0 && stopWhenFound) {
-                    stopQuery();
-                }
-            })
-            .catch(err => {
-                console.error(err);
+            document.getElementById('enableEmail').addEventListener('change', function() {
+                document.getElementById('emailFields').style.display = this.checked ? 'block' : 'none';
             });
-        }
-    </script>
-</body>
-</html>
+        
+            let queryInterval = null;
+            let countdownInterval = null;
+            let queryCount = 0;
+            let stopOnFound = false;
+        
+            function updateStatus(text) {
+                document.getElementById('status').innerText = text;
+            }
+        
+            function displayResult(data) {
+                const resultArea = document.getElementById('resultArea');
+                resultArea.innerHTML = '';
+                if (data.error) {
+                    resultArea.innerHTML = `<p style="color:red;">錯誤：${data.error}</p>`;
+                } else if (data.found) {
+                    data.results.forEach(item => {
+                        const div = document.createElement('div');
+                        div.innerHTML = `<strong>${item.train}</strong><br>${item.time}<hr>`;
+                        resultArea.appendChild(div);
+                    });
+                } else {
+                    resultArea.innerHTML = '<p>' + data.message + '</p>';
+                }
+            }
+        
+            function toggleButtons(disable) {
+                document.getElementById('queryUntilFoundBtn').disabled = disable;
+                document.getElementById('queryForeverBtn').disabled = disable;
+            }
+        
+            function startQueryUntilFound() {
+                stopOnFound = true;
+                toggleButtons(true);
+                document.getElementById('stopButton').disabled = false;
+                queryCount = 0;
+                document.getElementById('queryCount').innerText = queryCount;
+                updateStatus("查詢中（查到為止）...");
+                queryTrain();
+            }
+        
+            function startQueryForever() {
+                stopOnFound = false;
+                toggleButtons(true);
+                document.getElementById('stopButton').disabled = false;
+                queryCount = 0;
+                document.getElementById('queryCount').innerText = queryCount;
+                updateStatus("查詢中（持續進行）...");
+                queryTrain();
+            }
+        
+            function stopQuery() {
+                clearInterval(countdownInterval);
+                queryInterval = null;
+                countdownInterval = null;
+                updateStatus("已停止查詢");
+                document.getElementById('stopButton').disabled = true;
+                toggleButtons(false);
+                document.getElementById('queryStatus').style.display = 'none';
+                document.getElementById('nextQueryCountdown').style.display = 'none';
+            }
+        
+            function queryTrain() {
+                queryCount++;
+                document.getElementById('queryCount').innerText = queryCount;
+                document.getElementById('queryStatus').style.display = 'block';
+                document.getElementById('nextQueryCountdown').style.display = 'none';
+        
+                const startStation = document.getElementById('startStation').value;
+                const endStation = document.getElementById('endStation').value;
+                const startDateTime = document.getElementById('startDateTime').value;
+                const endDateTime = document.getElementById('endDateTime').value;
+                const pid = document.getElementById('pid').value;
+                const enableEmail = document.getElementById('enableEmail').checked;
+                const smtpUsername = enableEmail ? document.getElementById('smtpUsername').value : '';
+                const smtpAppPassword = enableEmail ? document.getElementById('smtpAppPassword').value : '';
+                const email = enableEmail ? document.getElementById('email').value : '';
+        
+                fetch('/query', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        startStation, endStation, startDateTime, endDateTime, pid,
+                        enableEmail, smtpUsername, smtpAppPassword, email
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('queryStatus').style.display = 'none';
+                    displayResult(data);
+                    if (stopOnFound && data.found && data.results && data.results.length > 0) {
+                        stopQuery();
+                    } else {
+                        let frequency = parseInt(document.getElementById('frequency').value);
+                        if (isNaN(frequency) || frequency < 1) frequency = 1;
+                        let countdown = frequency * 60;
+                        document.getElementById('nextQueryCountdown').style.display = 'block';
+                        document.getElementById('countdownSeconds').innerText = countdown;
+        
+                        countdownInterval = setInterval(() => {
+                            countdown--;
+                            if (countdown <= 0) {
+                                clearInterval(countdownInterval);
+                                queryTrain();
+                            } else {
+                                document.getElementById('countdownSeconds').innerText = countdown;
+                            }
+                        }, 1000);
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('queryStatus').style.display = 'none';
+                    document.getElementById('resultArea').innerHTML = `<p style="color:red;">查詢失敗：${err.message}</p>`;
+                    let frequency = parseInt(document.getElementById('frequency').value);
+                    if (isNaN(frequency) || frequency < 1) frequency = 1;
+                    let countdown = frequency * 60;
+                    document.getElementById('nextQueryCountdown').style.display = 'block';
+                    document.getElementById('countdownSeconds').innerText = countdown;
+        
+                    countdownInterval = setInterval(() => {
+                        countdown--;
+                        if (countdown <= 0) {
+                            clearInterval(countdownInterval);
+                            queryTrain();
+                        } else {
+                            document.getElementById('countdownSeconds').innerText = countdown;
+                        }
+                    }, 1000);
+                });
+            }
+        </script>
+        </body>
+        </html>
